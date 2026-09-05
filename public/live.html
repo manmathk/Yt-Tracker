@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05060a">
+  <title>Top 20 YouTube Live Tracker</title>
+  <link rel="stylesheet" href="/live.css">
+</head>
+<body>
+  <main class="stage" aria-label="Top 20 YouTube live subscriber tracker">
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
+
+    <header class="header">
+      <div>
+        <div class="eyebrow"><span class="live-dot"></span> LIVE TRACKER</div>
+        <h1>TOP 20 <span>YOUTUBE</span></h1>
+        <p>Subscribers · Global ranking</p>
+      </div>
+      <div class="updated">
+        <span id="statusDot" class="status-dot"></span>
+        <span id="statusText">CONNECTING</span>
+      </div>
+    </header>
+
+    <section id="leaderboard" class="leaderboard" aria-live="polite"></section>
+
+    <footer class="footer">
+      <div><strong>LIVE SUBSCRIBER TRACKER</strong> · Estimates animate between official API refreshes</div>
+      <div id="refreshText">Refresh: —</div>
+    </footer>
+  </main>
+
+  <template id="rowTemplate">
+    <article class="channel-row">
+      <div class="rank">01</div>
+      <div class="avatar-wrap"><img class="avatar" alt=""></div>
+      <div class="channel-info">
+        <div class="channel-name">Channel</div>
+        <div class="change">—</div>
+      </div>
+      <div class="count">0</div>
+      <div class="movement">•</div>
+    </article>
+  </template>
+
+  <script src="/live.js" defer></script>
+</body>
+</html>
