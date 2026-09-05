@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>YouTube Tracker Setup</title>
+  <link rel="stylesheet" href="/live.css">
+</head>
+<body class="config-page">
+  <main class="config-card">
+    <div class="eyebrow"><span class="live-dot"></span> LOCAL CONFIGURATION</div>
+    <h1>YouTube API Setup</h1>
+    <p class="config-note">Your API key is stored only in this browser's local storage and is sent to the local tracker server only when you start it. It is never written to GitHub.</p>
+    <label for="apiKey">YouTube Data API v3 key</label>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="AIza...">
+    <div class="actions">
+      <button id="save" type="button">Save Key</button>
+      <button id="clear" type="button" class="secondary">Clear</button>
+    </div>
+    <p id="message" role="status"></p>
+    <a href="/live.html">Open Live Tracker →</a>
+  </main>
+  <script>
+    const key = document.getElementById('apiKey');
+    const message = document.getElementById('message');
+    key.value = localStorage.getItem('yt_tracker_api_key') || '';
+    document.getElementById('save').onclick = () => {
+      const value = key.value.trim();
+      if (!value) { message.textContent = 'Enter an API key first.'; return; }
+      localStorage.setItem('yt_tracker_api_key', value);
+      message.textContent = 'Saved locally on this browser.';
+    };
+    document.getElementById('clear').onclick = () => {
+      localStorage.removeItem('yt_tracker_api_key');
+      key.value = '';
+      message.textContent = 'Local key cleared.';
+    };
+  </script>
+</body>
+</html>
