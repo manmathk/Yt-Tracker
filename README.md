@@ -71,9 +71,9 @@ FPS: 30 or 60
 
 ## Data
 
-The tracked set is the global Top 20 subscriber leaderboard observed on Social Blade on September 5, 2026. The IDs are fixed in `data/channels.json`; subscriber counts are fetched live from YouTube and the 20 channels are dynamically sorted by subscriber count. The list should be reviewed periodically because the external leaderboard changes. citeturn757437search1turn678340search0
+The tracked set is the global Top 20 subscriber leaderboard observed on Social Blade on September 5, 2026. The IDs are fixed in `data/channels.json`; subscriber counts are fetched live from YouTube and the 20 channels are dynamically sorted by subscriber count. The list should be reviewed periodically because the external leaderboard changes.
 
-YouTube's public `subscriberCount` is rounded to three significant figures, so the smooth number animation between refreshes is a visual interpolation rather than an exact per-second official YouTube count. See Google's `channels.list` documentation for the API behavior.
+YouTube's public `subscriberCount` is rounded to three significant figures, so the smooth number animation between refreshes is a visual interpolation rather than an exact per-second official YouTube count.
 
 ## Files
 
