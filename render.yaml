@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: yt-tracker
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: REFRESH_MS
+        value: "60000"
