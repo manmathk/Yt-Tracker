@@ -1,58 +1,67 @@
 # Yt-Tracker
 
-OBS-ready vertical Top 20 YouTube subscriber tracker.
+OBS-ready vertical Top 20 YouTube subscriber tracker, deployable as a static GitHub Pages site.
 
-## Architecture
+## GitHub Pages architecture
 
 ```text
-YouTube Data API v3
-        ↓
-20 fixed YouTube channel handles
-        ↓
-Node/Express cache
-        ↓
+GitHub Pages
+     ↓
 9:16 HTML/CSS/JS
-        ↓
+     ↓
+User enters their own YouTube Data API v3 key
+     ↓
+Key stays in browser localStorage
+     ↓
+Browser calls YouTube Data API directly
+     ↓
+Top 20 fixed channel IDs
+     ↓
+Dynamic ranking + bounded animation
+     ↓
 OBS Browser Source
-        ↓
+     ↓
 YouTube Live
 ```
 
-The public leaderboard is designed for **1080×1920 (9:16)** capture. The browser polls the local API frequently, while the backend refreshes YouTube data on a longer cache interval to avoid unnecessary API calls.
+No Node.js server is required for the GitHub Pages version.
 
-## Data source
+## GitHub Pages deployment
 
-The project uses the official YouTube Data API v3 `channels.list` endpoint with `snippet,statistics`. YouTube's public `subscriberCount` is rounded down to three significant figures, so the smooth per-second number shown between API refreshes is explicitly an **estimate/interpolation**, not an exact YouTube count.
+1. Open the repository **Settings → Pages**.
+2. Under **Build and deployment**, choose **Deploy from a branch**.
+3. Select the `main` branch and `/ (root)` folder.
+4. Save. GitHub will publish `index.html`.
 
-The initial 20-channel set follows the global subscriber leaderboard observed on Social Blade on September 5, 2026. The set is fixed; the app dynamically re-ranks those 20 channels using the latest YouTube API response. The set should be reviewed periodically because the external ranking can change.
+Open the published site. It redirects to `config.html` for first-time setup.
 
-## Run locally
+## API key setup
 
-1. Enable **YouTube Data API v3** in Google Cloud and create an API key.
-2. Copy `.env.example` to `.env` and set `YOUTUBE_API_KEY`.
-3. Install dependencies:
+Open `/config.html`, paste your own YouTube Data API v3 key, and click **Save Key**.
+
+The key is stored in that browser's `localStorage`. It is not stored in this repository. Each browser/user must configure their own key.
+
+For a personal OBS setup, this avoids putting your credential in GitHub. Note that browser localStorage is not a secure secrets vault; anyone with access to that browser profile/device may inspect it.
+
+## Local development
+
+The GitHub Pages build is static, so you can serve the repository with any static HTTP server. For example:
 
 ```bash
-npm install
+python3 -m http.server 8080
 ```
 
-4. Start the server:
-
-```bash
-npm start
-```
-
-5. Open:
+Then open:
 
 ```text
-http://localhost:3000/live.html
+http://localhost:8080/
 ```
 
 ## OBS
 
-Add an OBS **Browser Source** using the deployed `/live.html` URL.
+Add the published `/live.html` URL as an OBS **Browser Source**.
 
-Recommended size:
+Recommended source size:
 
 ```text
 Width: 1080
@@ -60,21 +69,23 @@ Height: 1920
 FPS: 30 or 60
 ```
 
-## Deployment
+## Data
 
-`render.yaml` is included for a simple Render web-service deployment. Set the `YOUTUBE_API_KEY` environment variable in Render; never commit the real key to Git.
+The tracked set is the global Top 20 subscriber leaderboard observed on Social Blade on September 5, 2026. The IDs are fixed in `data/channels.json`; subscriber counts are fetched live from YouTube and the 20 channels are dynamically sorted by subscriber count. The list should be reviewed periodically because the external leaderboard changes. citeturn757437search1turn678340search0
 
-## Configuration
+YouTube's public `subscriberCount` is rounded to three significant figures, so the smooth number animation between refreshes is a visual interpolation rather than an exact per-second official YouTube count. See Google's `channels.list` documentation for the API behavior.
 
-Edit `data/channels.json` to change the 20 tracked channels. Each entry uses a YouTube handle, and the backend resolves the handles to channel IDs once per server process before requesting all channel statistics in a single batched API call.
+## Files
 
-## Routes
-
-- `/live.html` — vertical OBS display
-- `/api/channels` — cached channel data
-- `/api/health` — health/status endpoint
+- `index.html` — GitHub Pages entrypoint
+- `config.html` — browser-side API key setup
+- `live.html` — 1080×1920 vertical display
+- `live.css` — display and setup styling
+- `live.js` — YouTube API client, ranking, and animation
+- `data/channels.json` — fixed Top 20 channel IDs
+- `public/` and `server.js` — optional local/server version retained for non-Pages deployments
 
 ## Sources
 
-- Google YouTube Data API: https://developers.google.com/youtube/v3/docs/channels
+- Google YouTube Data API `channels.list`: https://developers.google.com/youtube/v3/docs/channels
 - Social Blade global YouTube subscriber list: https://socialblade.com/youtube/lists/top/100/subscribers/all/global
