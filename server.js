@@ -15,6 +15,9 @@ const cache = {
   error: null
 };
 
+let resolvedChannels = null;
+let refreshing = null;
+
 function publicChannel(item, fallback) {
   const stats = item.statistics || {};
   return {
@@ -41,41 +44,52 @@ async function youtubeRequest(params) {
   return body;
 }
 
+async function resolveChannelIds() {
+  if (resolvedChannels) return resolvedChannels;
+
+  const resolved = [];
+  for (const configured of channels) {
+    const result = await youtubeRequest({ part: 'id', forHandle: configured.handle });
+    const item = result.items?.[0];
+    if (item?.id) resolved.push({ ...configured, id: item.id });
+    else console.warn(`[yt-tracker] could not resolve ${configured.handle}`);
+  }
+
+  if (!resolved.length) throw new Error('No configured YouTube channels could be resolved.');
+  resolvedChannels = resolved;
+  return resolvedChannels;
+}
+
 async function refreshCache() {
   if (!API_KEY) {
     cache.error = 'YOUTUBE_API_KEY is not configured.';
     return;
   }
+  if (refreshing) return refreshing;
 
-  // Resolve configured handles to IDs once, then request all 20 IDs in one call.
-  const ids = [];
-  const resolved = [];
+  refreshing = (async () => {
+    const resolved = await resolveChannelIds();
+    const ids = resolved.map((channel) => channel.id);
 
-  for (const configured of channels) {
-    const result = await youtubeRequest({ part: 'id', forHandle: configured.handle });
-    const item = result.items?.[0];
-    if (item?.id) {
-      ids.push(item.id);
-      resolved.push({ ...configured, id: item.id });
-    }
+    const details = await youtubeRequest({
+      part: 'snippet,statistics',
+      id: ids.join(',')
+    });
+
+    const byId = new Map((details.items || []).map((item) => [item.id, item]));
+    cache.channels = resolved
+      .map((configured) => byId.get(configured.id) ? publicChannel(byId.get(configured.id), configured) : null)
+      .filter(Boolean);
+    cache.updatedAt = Date.now();
+    cache.error = null;
+    console.log(`[yt-tracker] refreshed ${cache.channels.length}/${channels.length} channels`);
+  })();
+
+  try {
+    await refreshing;
+  } finally {
+    refreshing = null;
   }
-
-  if (!ids.length) throw new Error('No configured YouTube channels could be resolved.');
-
-  const details = await youtubeRequest({
-    part: 'snippet,statistics',
-    id: ids.join(',')
-  });
-
-  const byId = new Map((details.items || []).map((item) => [item.id, item]));
-  cache.channels = resolved
-    .map((configured) => byId.get(configured.id) ? publicChannel(byId.get(configured.id), configured) : null)
-    .filter(Boolean);
-  cache.updatedAt = Date.now();
-  cache.error = null;
-
-  // Keep a resolved ID file out of git; the configured handles remain the source of truth.
-  console.log(`[yt-tracker] refreshed ${cache.channels.length}/${channels.length} channels`);
 }
 
 async function ensureFresh() {
@@ -110,7 +124,7 @@ app.get('/api/channels', async (_req, res) => {
   }
 });
 
-app.get('*', (_req, res) => {
+app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));
 });
 
