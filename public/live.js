@@ -7,7 +7,7 @@ const refreshText = document.getElementById('refreshText');
 const state = new Map();
 let refreshMs = 60_000;
 
-const formatCompact = new Intl.NumberFormat('en-US', {
+const compactFormatter = new Intl.NumberFormat('en-US', {
   notation: 'compact',
   maximumFractionDigits: 2
 });
@@ -28,46 +28,39 @@ function setStatus(kind, text) {
 function saveSnapshot(channel) {
   const previous = state.get(channel.id);
   const now = Date.now();
-  const next = {
+  const nextServerValue = channel.subscribers;
+  const previousValue = previous?.serverValue ?? nextServerValue;
+
+  state.set(channel.id, {
     ...previous,
-    serverValue: channel.subscribers,
-    lastServerValue: previous?.serverValue ?? channel.subscribers,
+    serverValue: nextServerValue,
+    animationFrom: previousValue,
+    animationTo: nextServerValue,
     fetchedAt: now,
     previousRank: previous?.rank ?? null,
-    rank: previous?.rank ?? null,
-    ratePerSecond: previous?.ratePerSecond ?? 0
-  };
-
-  if (previous && Number.isFinite(previous.serverValue) && Number.isFinite(channel.subscribers) && channel.subscribers !== previous.serverValue) {
-    const elapsed = Math.max(1, (now - previous.fetchedAt) / 1000);
-    next.ratePerSecond = Math.max(-10, Math.min(10, (channel.subscribers - previous.serverValue) / elapsed));
-  }
-
-  state.set(channel.id, next);
-  return next;
+    rank: previous?.rank ?? null
+  });
 }
 
-function projectedValue(channel) {
+function displayedValue(channel) {
   const s = state.get(channel.id);
   if (!s || !Number.isFinite(s.serverValue)) return channel.subscribers;
-  const elapsed = Math.max(0, (Date.now() - s.fetchedAt) / 1000);
-  // The official API rounds public subscriber counts. This is an interpolation for display only.
-  const projection = s.serverValue + s.ratePerSecond * elapsed;
-  const target = s.ratePerSecond >= 0 ? projection : s.serverValue;
-  return Math.max(0, target);
+  if (!Number.isFinite(s.animationFrom) || !Number.isFinite(s.animationTo)) return s.serverValue;
+
+  const progress = Math.min(1, Math.max(0, (Date.now() - s.fetchedAt) / refreshMs));
+  const eased = 1 - Math.pow(1 - progress, 3);
+  return s.animationFrom + (s.animationTo - s.animationFrom) * eased;
 }
 
 function render(channels) {
   const valid = channels.filter((c) => Number.isFinite(c.subscribers));
-
-  valid.forEach((channel) => saveSnapshot(channel));
-  valid.sort((a, b) => projectedValue(b) - projectedValue(a));
+  valid.forEach(saveSnapshot);
+  valid.sort((a, b) => displayedValue(b) - displayedValue(a));
 
   valid.forEach((channel, index) => {
     const s = state.get(channel.id);
-    const newRank = index + 1;
     s.previousRank = s.rank;
-    s.rank = newRank;
+    s.rank = index + 1;
   });
 
   const rows = new Map([...leaderboard.children].map((row) => [row.dataset.id, row]));
@@ -82,21 +75,17 @@ function render(channels) {
 
     const s = state.get(channel.id);
     const movement = s.previousRank == null ? 0 : s.previousRank - s.rank;
+    const changed = s.animationFrom !== s.animationTo;
+    const change = row.querySelector('.change');
+
     row.querySelector('.rank').textContent = String(index + 1).padStart(2, '0');
     row.querySelector('.channel-name').textContent = channel.name;
     row.querySelector('.avatar').src = channel.avatar || '';
     row.querySelector('.avatar').alt = `${channel.name} avatar`;
-    row.querySelector('.count').textContent = numberFormat(projectedValue(channel));
+    row.querySelector('.count').textContent = numberFormat(displayedValue(channel));
 
-    const rate = s.ratePerSecond;
-    const change = row.querySelector('.change');
-    if (rate > 0.001) {
-      change.textContent = `▲ ~${numberFormat(rate * 60)}/min`;
-      change.className = 'change up';
-    } else {
-      change.textContent = 'Awaiting next API refresh';
-      change.className = 'change';
-    }
+    change.textContent = changed ? `Estimated transition · ${formatAge(channel.fetchedAt)}` : 'Official API count';
+    change.className = `change${changed ? ' up' : ''}`;
 
     const movementEl = row.querySelector('.movement');
     movementEl.className = 'movement';
@@ -141,11 +130,10 @@ function formatAge(timestamp) {
 }
 
 function tick() {
-  [...state.entries()].forEach(([id, s]) => {
+  state.forEach((s, id) => {
     const row = leaderboard.querySelector(`[data-id="${CSS.escape(id)}"]`);
     if (!row || !Number.isFinite(s.serverValue)) return;
-    const liveValue = s.serverValue + Math.max(0, s.ratePerSecond) * Math.max(0, (Date.now() - s.fetchedAt) / 1000);
-    row.querySelector('.count').textContent = formatCompact.format(liveValue);
+    row.querySelector('.count').textContent = compactFormatter.format(s.animationFrom + (s.animationTo - s.animationFrom) * (1 - Math.pow(1 - Math.min(1, Math.max(0, (Date.now() - s.fetchedAt) / refreshMs)), 3)));
   });
   requestAnimationFrame(tick);
 }
